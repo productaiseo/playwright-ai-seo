@@ -11,6 +11,7 @@ import {
 // import { useAuth } from '@/hooks/useAuth';
 // import { AuthContext } from '@/contexts/AuthContext';
 // import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface AuthButtonProps {
   variant?: 'header' | 'standalone';
@@ -116,12 +117,14 @@ export default function AuthButton({
 */
 
   return (
-    <button
-    //   onClick={goToSignIn}
-      className={`flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg text-white font-medium transition-all shadow-lg hover:shadow-cyan-500/25 ${className}`}
-    >
-      <FiLogIn size={16} />
-      <span>Giriş Yap</span>
-    </button>
+    <Link href="/auth/signin">
+      <button
+      //   onClick={goToSignIn}
+        className={`flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg text-white font-medium cursor-pointer transition-all shadow-lg hover:shadow-cyan-500/25 ${className}`}
+      >
+        <FiLogIn size={16} />
+        <span>Giriş Yap</span>
+      </button>
+    </Link>
   );
 }
