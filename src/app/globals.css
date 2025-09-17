@@ -1,3 +1,5 @@
+/* @tailwind utilities; */
+
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -119,4 +121,24 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+
+/* Modern Scrollbar Stilleri */
+.modern-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modern-scrollbar::-webkit-scrollbar-track {
+  background: rgba(17, 24, 39, 0.1);
+  border-radius: 10px;
+}
+
+.modern-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(30, 58, 138, 0.5);
+  border-radius: 10px;
+}
+
+.modern-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 58, 138, 0.8);
 }
