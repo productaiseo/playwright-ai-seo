@@ -118,8 +118,7 @@ function SignInContent() {
                 {' '}ve{' '}
                 <Link href="/terms" className="text-cyan-400 hover:text-cyan-300">
                   Kullanım Şartları
-                </Link>
-                'nı kabul etmiş olursunuz.
+                </Link>&apos;nı kabul etmiş olursunuz.
               </p>
             </div>
           </div>
