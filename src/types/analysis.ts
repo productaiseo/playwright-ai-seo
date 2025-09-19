@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { ActionPlanItem } from '@/types/geo';
 
@@ -57,6 +58,10 @@ export interface EEATComponent {
 }
 
 export interface EEATAnalysis {
+  actionPlan: ActionPlanItem[];
+  geoScoreDetails: any; // Esnek yapı, AI tarafından sağlanan çeşitli sinyalleri içerebilir
+  executiveSummary: string;
+  eeatAnalysis: EEATAnalysis;
   experience: EEATComponent;
   expertise: EEATComponent;
   authoritativeness: EEATComponent;
