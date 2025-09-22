@@ -1,5 +1,3 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
 /.pnp
@@ -12,6 +10,7 @@
 
 # testing
 /coverage
+/test-results
 
 # next.js
 /.next/
@@ -24,6 +23,9 @@
 .DS_Store
 *.pem
 
+# Sensitive credentials
+oauth-client.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*
@@ -33,7 +35,6 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 .env.local
-# firebase-service-account.json
 
 # vercel
 .vercel
@@ -41,3 +42,49 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# temp files
+*.tmp
+*.temp
+
+# logs
+*.log
+
+# Mac
+.DS_Store
+
+# Memory Bank
+memory-bank-MCP-main/
+
+# Test artifacts
+/mocks/
+/playwright-report/
+
+/generated/prisma
+
+# Firebase
+firebase-service-account.json
+firebase-admin-key.json
+firebase-debug.log*
+.firebase/*
+
+# local secrets / temp
+token.txt
+gcp-sa.json
+internal_url.txt
+cloud_scraper_url.txt
+
+# functions build output (tracked in some repos; keep ignored for new files)
+functions/lib/
+
+.git_disabled/
+
+# Windows installers/binaries accidentally added
+GoogleCloudSDKInstaller.exe
+*.exe

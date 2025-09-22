@@ -1,29 +1,23 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
-import React, { Suspense,  
-  // useEffect 
-} from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiShield, FiZap, FiTrendingUp, 
-  // FiArrowLeft 
-} from 'react-icons/fi';
+import { FiShield, FiZap, FiTrendingUp, } from 'react-icons/fi';
 import Link from 'next/link';
-// import { useAuth } from '@/contexts/AuthContext';
-// import { useRouter, useSearchParams } from 'next/navigation';
-// import Logo from '@/components/Logo';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Logo from '@/components/Logo';
 import EmailAuthForm from '@/components/Forms/EmailAuthForm';
 
 
 function SignInContent() {
 
-/*   
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
-*/
-
-/* 
+ 
   useEffect(() => {
     if (isAuthenticated) {
       router.push(callbackUrl);
@@ -38,7 +32,6 @@ function SignInContent() {
       </div>
     );
   }
-*/
 
   return (
     <div className="relative z-10 flex items-center justify-center min-h-[calc(100vh-96px)] px-6">

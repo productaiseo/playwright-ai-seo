@@ -1,0 +1,67 @@
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "runtime": "nodejs20",
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": [
+    {
+      "site": "aiseo-mvp-77790251",
+      "source": ".",
+      "frameworksBackend": {
+        "region": "us-central1",
+        "codebase": "nextjs",
+        "secrets": [
+          "INTERNAL_ORCHESTRATOR_URL",
+          "INTERNAL_API_URL",
+          "INTERNAL_API_TOKEN",
+          "GOOGLE_GEMINI_API_KEY",
+          "GOOGLE_API_KEY",
+          "OPENAI_API_KEY",
+          "GOOGLE_PAGESPEED_API_KEY",
+          "PERPLEXITY_API_KEY",
+          "GOOGLE_CUSTOM_SEARCH_API_KEY",
+          "GOOGLE_CSE_ID",
+          "BROWSERLESS_API_KEY",
+          "CLOUD_SCRAPER_URL"
+        ]
+      }
+    }
+  ],
+  "emulators": {
+    "hosting": {
+      "port": 5000
+    },
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8081
+    },
+    "auth": {
+      "port": 9099
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
+    "singleProjectMode": true
+  }
+}

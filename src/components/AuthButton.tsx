@@ -1,33 +1,30 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-// import React, { useContext } from 'react';
-// import { motion } from 'framer-motion';
-import { 
-    // FiUser, FiLogOut, 
-    FiLogIn } from 'react-icons/fi';
-// import Image from 'next/image';
-// import { signOut } from 'firebase/auth';
-// import { auth } from '@/lib/firebase';
-// import { useAuth } from '@/hooks/useAuth';
-// import { AuthContext } from '@/contexts/AuthContext';
-// import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import React, { useContext } from 'react';
+import { motion } from 'framer-motion';
+import { FiUser, FiLogOut, FiLogIn } from 'react-icons/fi';
+import Image from 'next/image';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthContext } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 interface AuthButtonProps {
   variant?: 'header' | 'standalone';
   className?: string;
 }
 
-export default function AuthButton({ 
-    // variant = 'header', 
-    className = '' }: Readonly<AuthButtonProps>
+export default function AuthButton(
+  { variant = 'header', className = '' }: Readonly<AuthButtonProps>
 ) {
 
-//   const { user, loading } = useContext(AuthContext);
-//   const { signInWithGoogle: signInWithGoogleFn, signOut: signOutFn } = (useAuth() as any) || {};
-//   const router = useRouter();
+  const { user, loading } = useContext(AuthContext);
+  const { signInWithGoogle: signInWithGoogleFn, signOut: signOutFn } = (useAuth() as any) || {};
+  const router = useRouter();
 
-/* 
+
   const goToSignIn = () => {
     try {
       if (typeof signInWithGoogleFn === 'function') {
@@ -39,9 +36,8 @@ export default function AuthButton({
     const callbackUrl = typeof window !== 'undefined' ? window.location.pathname : '/';
     router.push(`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
   };
-*/
 
-/* 
+
   const logout = async () => {
     try {
       if (typeof signOutFn === 'function') {
@@ -53,9 +49,8 @@ export default function AuthButton({
       console.error('Çıkış sırasında hata:', error);
     }
   };
-*/
 
-/* 
+
   if (loading) {
     return (
       <button
@@ -67,9 +62,8 @@ export default function AuthButton({
       </button>
     );
   }
-*/
 
-/* 
+
   if (user) {
     return (
       <div className={`flex items-center gap-3 ${className}`}>
@@ -114,17 +108,15 @@ export default function AuthButton({
       </div>
     );
   }
-*/
+
 
   return (
-    <Link href="/auth/signin">
-      <button
-      //   onClick={goToSignIn}
-        className={`flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg text-white font-medium cursor-pointer transition-all shadow-lg hover:shadow-cyan-500/25 ${className}`}
-      >
-        <FiLogIn size={16} />
-        <span>Giriş Yap</span>
-      </button>
-    </Link>
+    <button
+      onClick={goToSignIn}
+      className={`flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg text-white font-medium transition-all shadow-lg hover:shadow-cyan-500/25 ${className}`}
+    >
+      <FiLogIn size={16} />
+      <span>Giriş Yap</span>
+    </button>
   );
 }

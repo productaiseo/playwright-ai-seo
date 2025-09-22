@@ -2,10 +2,10 @@
 'use client';
 
 import React, { useState } from 'react';
-// import { useRouter, useSearchParams } from 'next/navigation';
-// import { auth, db } from '@/lib/firebase';
-// import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, updateProfile } from 'firebase/auth';
-// import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { auth, db } from '@/lib/firebase';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 
 export default function EmailAuthForm() {
@@ -20,11 +20,10 @@ export default function EmailAuthForm() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // const router = useRouter();
-  // const searchParams = useSearchParams();
-  // const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
 
-/*
   const handleSignin = async () => {
     setBusy(true); setError(null); setMessage(null);
     try {
@@ -34,9 +33,8 @@ export default function EmailAuthForm() {
       setError(mapAuthError(e?.code) || 'Giriş başarısız.');
     } finally { setBusy(false); }
   };
-*/
 
-/*
+
   const handleSignup = async () => {
     setBusy(true); setError(null); setMessage(null);
     try {
@@ -72,12 +70,12 @@ export default function EmailAuthForm() {
       setError(mapAuthError(e?.code) || 'Kayıt başarısız.');
     } finally { setBusy(false); }
   };
-*/
+
 
   const handleReset = async () => {
     setBusy(true); setError(null); setMessage(null);
     try {
-      // await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, email);
       setMessage('Şifre sıfırlama e‑postası gönderildi.');
     } catch (e: any) {
       setError(mapAuthError(e?.code) || 'İşlem başarısız.');
@@ -114,11 +112,11 @@ export default function EmailAuthForm() {
         {message && <div className="text-green-300 text-sm">{message}</div>}
         {mode==='signin' ? (
           <button disabled={busy} 
-          // onClick={handleSignin} 
+          onClick={handleSignin} 
           className="w-full py-3 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold disabled:opacity-60">Giriş Yap</button>
         ) : (
           <button disabled={busy || !email || !password} 
-          // onClick={handleSignup} 
+          onClick={handleSignup} 
           className="w-full py-3 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold disabled:opacity-60">Kayıt Ol</button>
         )}
         <button disabled={busy} onClick={handleReset} className="w-full py-2 rounded-lg text-sm text-white/80 hover:text-white underline underline-offset-4">Şifremi Unuttum</button>

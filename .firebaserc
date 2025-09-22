@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "aiseo-mvp-77790251",
+    "prod": "aiseo-mvp-2025"
+  },
+  "targets": {},
+  "etags": {}
+}
