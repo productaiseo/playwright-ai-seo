@@ -182,10 +182,10 @@ export function getAdminDb(): Firestore | null {
       const app = ensureAdminApp();
       const db = admin.firestore(app) as unknown as Firestore;
 
-      // ⬇️ drop undefineds automatically (Admin SDK feature)
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore - settings exists at runtime
-      db.settings({ ignoreUndefinedProperties: true });
+      // REMOVE this block – causes the runtime error:
+      // db.settings({ ignoreUndefinedProperties: true });
 
       g.__ADMIN_DB__ = db;
     }

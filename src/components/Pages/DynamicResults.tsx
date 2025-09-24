@@ -10,8 +10,8 @@ import ProgressAnimation from '@/components/ProgressAnimation';
 import ReportTabs from '@/components/Reports/ReportTabs';
 import DebugBox from '@/components/DebugBox';
 import { AnalysisJob } from '@/types/geo';
-// import { auth } from '@/app/lib/firebase';
-// import { useAuth } from '@/app/contexts/AuthContext';
+import { auth } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 
 
 const jobStatusSteps = [
@@ -32,30 +32,36 @@ interface Props {
 
 const DomainResultsPage = ({ domain }: Props) => {
     
-    const plainDomain = typeof domain === 'string' ? decodeURIComponent(domain) : '';
-
-    console.log("Rendering page for domain:", domain);
-    console.log("Decoded plainDomain:", plainDomain);
+  const plainDomain = typeof domain === 'string' ? decodeURIComponent(domain) : '';
 
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<string | null>('QUEUED');
   const [error, setError] = useState<string | null>(null);
   const [geoReport, setGeoReport] = useState<AnalysisJob | null>(null);
 
+  const { isAuthenticated, isLoading } = useAuth();
+
   useEffect(() => {
     if (!plainDomain) return;
+    if (isLoading) return;
+
+    if (!isAuthenticated) {
+      window.location.href = `/auth/signin?callbackUrl=${encodeURIComponent(`/results/${encodeURIComponent(plainDomain)}`)}`;
+      return;
+    }
 
     const startAnalysis = async () => {
       try {
         setError(null);
         setJobStatus('QUEUED');
-
+        const idToken = await auth.currentUser?.getIdToken?.(true);
         const response = await fetch(`/api/analyze-domain`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {}),
           },
-          body: JSON.stringify({ url: plainDomain }),
+          body: JSON.stringify({ url: plainDomain, idToken }),
         });
 
         if (!response.ok) {
@@ -82,7 +88,7 @@ const DomainResultsPage = ({ domain }: Props) => {
     };
 
     startAnalysis();
-  }, [plainDomain]);
+  }, [plainDomain, isAuthenticated, isLoading]);
 
 
   useEffect(() => {
@@ -90,9 +96,11 @@ const DomainResultsPage = ({ domain }: Props) => {
 
     const interval = setInterval(async () => {
       try {
-
+        const idToken = await auth.currentUser?.getIdToken?.(true);
         const response = await fetch(`/api/internal/job-status/${jobId}`, {
-            method: 'GET',
+          headers: {
+            ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {}),
+          },
         });
         if (!response.ok) throw new Error('İş durumu alınamadı.');
 
@@ -116,14 +124,14 @@ const DomainResultsPage = ({ domain }: Props) => {
   }, [jobId, jobStatus]);
 
 
-    const getCurrentStep = () => {
-        const currentStepIndex = jobStatusSteps.findIndex(step => step.status === jobStatus);
-        return jobStatusSteps.map((step, index) => ({
-        ...step,
-        completed: index < currentStepIndex,
-        current: index === currentStepIndex,
-        }));
-    };
+  const getCurrentStep = () => {
+    const currentStepIndex = jobStatusSteps.findIndex(step => step.status === jobStatus);
+    return jobStatusSteps.map((step, index) => ({
+      ...step,
+      completed: index < currentStepIndex,
+      current: index === currentStepIndex,
+    }));
+  };
 
   const progress = jobStatus === 'COMPLETED'
     ? 100

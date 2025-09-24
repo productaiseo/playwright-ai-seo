@@ -7,10 +7,14 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Temporary: Allow admin access to analysisJobs collection
+    match /analysisJobs/{document=**} {
+      allow read, write: if true; // TEMPORARY - replace with proper auth
+    }
+
     // Development rules: allow all (emulator only)
     match /{document=**} {
       allow read, write: if true;
     }
   }
 }
-

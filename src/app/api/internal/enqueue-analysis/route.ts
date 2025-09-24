@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 import crypto from 'crypto';
-// import { createHttpTask } from '@/lib/cloudTasks';
+import { createHttpTask } from '@/lib/cloudTasks';
 import logger from '@/utils/logger';
 
 // Enqueue analysis via Cloud Tasks (if configured), else call orchestrator with OIDC, else fallback to local start-analysis
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     const preferTasks = (process.env.CLOUD_TASKS_ENABLED || '').trim() === 'true' || !!process.env.CLOUD_TASKS_QUEUE;
     const token = (process.env.INTERNAL_API_TOKEN || '').trim();
     const payload = { jobId, userId, domain };
-/* 
+
     if (preferTasks) {
       try {
         const serviceAccountEmail = (process.env.TASKS_SERVICE_ACCOUNT_EMAIL || `${process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || ''}@appspot.gserviceaccount.com`).trim();
@@ -43,10 +44,9 @@ export async function POST(request: NextRequest) {
     if (orchestratorUrl) {
       let orchestratorOk = false;
       try {
-        // const { GoogleAuth } = require('google-auth-library');
-        // const auth = new GoogleAuth();
-        // const idClient = await auth.getIdTokenClient(orchestratorUrl);
-        const idClient = { request: (opts: any) => fetch(opts.url, { method: opts.method, headers: opts.headers, body: JSON.stringify(opts.data) }) };
+        const { GoogleAuth } = require('google-auth-library');
+        const auth = new GoogleAuth();
+        const idClient = await auth.getIdTokenClient(orchestratorUrl);
         const r = await idClient.request({ url: orchestratorUrl, method: 'POST', data: payload, headers: { 'Content-Type': 'application/json' } });
         if (r.status && r.status >= 200 && r.status < 300) {
           orchestratorOk = true;
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       }
       // If orchestrator calls failed, fall through to local start-analysis fallback below
     }
- */
+
     // Fallback: call local start-analysis
     const base = new URL(request.url).origin;
     const startUrl = `${base}/api/internal/start-analysis`;
