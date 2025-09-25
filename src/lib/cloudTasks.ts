@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import logger from '@/utils/logger';
 
@@ -34,17 +35,17 @@ export async function createHttpTask({ projectId, location = 'us-central1', queu
   }
 
   const bodyJson = { httpRequest };
-/*
+
   const { GoogleAuth } = require('google-auth-library');
   const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
   const client = await auth.getClient();
   const token = await client.getAccessToken();
   if (!token || typeof token !== 'string') throw new Error('no_access_token');
-*/
+
   const resp = await fetch(tasksBase, {
     method: 'POST',
     headers: {
-      // 'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ task: bodyJson }),

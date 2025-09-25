@@ -114,7 +114,7 @@ function ensureAdminApp(): App {
       console.warn('Admin init with SERVICE_ACCOUNT env failed:', e);
     }
   }
-
+/* 
   // 2) Try local service account file
   try {
     const fs = require('node:fs');
@@ -146,7 +146,7 @@ function ensureAdminApp(): App {
   } catch (e) {
     console.warn('Failed to read service account file:', e);
   }
-
+*/
   // 3) Try Application Default Credentials (for Cloud Run/Functions)
   try {
     console.log('[admin-init] trying applicationDefault() with inferred projectId');
@@ -157,20 +157,6 @@ function ensureAdminApp(): App {
     return g.__ADMIN_APP__;
   } catch (e) {
     console.warn('Admin init failed with ADC:', e);
-  }
-
-  // 4) Try GOOGLE_APPLICATION_CREDENTIALS environment variable
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    try {
-      console.log('[admin-init] trying GOOGLE_APPLICATION_CREDENTIALS');
-      g.__ADMIN_APP__ = admin.initializeApp({
-        projectId: projectId,
-      });
-      console.log('[admin-init] initialized with GOOGLE_APPLICATION_CREDENTIALS');
-      return g.__ADMIN_APP__;
-    } catch (e) {
-      console.warn('Admin init failed with GOOGLE_APPLICATION_CREDENTIALS:', e);
-    }
   }
 
   throw new Error('Firebase Admin SDK failed to initialize. Please check your credentials.');

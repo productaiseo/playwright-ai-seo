@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 import crypto from 'crypto';
-import { createHttpTask } from '@/lib/cloudTasks';
+// import { createHttpTask } from '@/lib/cloudTasks';
 import logger from '@/utils/logger';
 
 // Enqueue analysis via Cloud Tasks (if configured), else call orchestrator with OIDC, else fallback to local start-analysis
@@ -26,8 +26,9 @@ export async function POST(request: NextRequest) {
     const preferTasks = (process.env.CLOUD_TASKS_ENABLED || '').trim() === 'true' || !!process.env.CLOUD_TASKS_QUEUE;
     const token = (process.env.INTERNAL_API_TOKEN || '').trim();
     const payload = { jobId, userId, domain };
-
+/* 
     if (preferTasks) {
+      console.log('cloud tasks preferred:', preferTasks, !!process.env.CLOUD_TASKS_QUEUE);
       try {
         const serviceAccountEmail = (process.env.TASKS_SERVICE_ACCOUNT_EMAIL || `${process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || ''}@appspot.gserviceaccount.com`).trim();
         const location = process.env.CLOUD_TASKS_LOCATION || 'us-central1';
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
 
     if (orchestratorUrl) {
       let orchestratorOk = false;
+      console.log('orchestrator url:', orchestratorUrl);
       try {
         const { GoogleAuth } = require('google-auth-library');
         const auth = new GoogleAuth();
@@ -74,7 +76,7 @@ export async function POST(request: NextRequest) {
       }
       // If orchestrator calls failed, fall through to local start-analysis fallback below
     }
-
+ */
     // Fallback: call local start-analysis
     const base = new URL(request.url).origin;
     const startUrl = `${base}/api/internal/start-analysis`;
