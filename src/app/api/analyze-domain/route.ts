@@ -4,8 +4,17 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
-import { createJobInFirestore, updateJobInFirestore, getJobFromFirestore } from '@/lib/firebase-admin';
+import {
+  createJobInFirestore,
+  updateJobInFirestore,
+  getJobFromFirestore,
+} from '@/lib/firebase-admin';
 import { AnalysisJob } from '@/types/geo';
+
+/** ENV’leri üstte sabitle */
+const PUBLIC_ANALYZE_URL     = (process.env.ANALYZE_PUBLIC_URL ?? '').trim();
+const INTERNAL_API_URL_ENV   = (process.env.INTERNAL_API_URL ?? '').trim();
+const INTERNAL_API_TOKEN_ENV = (process.env.INTERNAL_API_TOKEN ?? '').trim();
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,44 +22,51 @@ export async function POST(request: NextRequest) {
     const url: string | undefined = payloadJson?.url;
 
     if (!url || typeof url !== 'string') {
-      return NextResponse.json({ error: 'URL gereklidir ve bir metin olmalidir.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'URL gereklidir ve bir metin olmalidir.' },
+        { status: 400 }
+      );
     }
 
     const normalizedUrl =
-      url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
+      url.startsWith('http://') || url.startsWith('https://')
+        ? url
+        : `https://${url}`;
 
-    // 1) ÖNCE: Public proxy varsa, job oluşturma; direkt oraya yönlendir ve sonucu döndür.
-    const publicUrlRaw = process.env.ANALYZE_PUBLIC_URL?.trim();
-    const publicUrlOk =
-      publicUrlRaw &&
-      (() => {
-        try {
-          const u = new URL(publicUrlRaw);
-          return !/[<>]/.test(u.href);
-        } catch {
-          return false;
-        }
-      })();
-
-    if (publicUrlOk) {
+    /**
+     * 1) ÖNCE PUBLIC PROXY: varsa direkt oraya POST et, çıktıyı aynen dön.
+     * Vercel prod’da ANALYZE_PUBLIC_URL = analyzedomainpublic-*.run.app olmalı.
+     */
+    const publicOk = (() => {
+      if (!PUBLIC_ANALYZE_URL) return false;
       try {
-        const resp = await fetch(publicUrlRaw as string, {
+        const u = new URL(PUBLIC_ANALYZE_URL);
+        return !/[<>]/.test(u.href);
+      } catch {
+        return false;
+      }
+    })();
+
+    if (publicOk) {
+      try {
+        const proxyResp = await fetch(PUBLIC_ANALYZE_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             url: normalizedUrl,
-            userId: 'public', // istersen gerçek uid geçebilirsin
+            userId: 'public', // gerekirse gerçek uid gönder
           }),
         });
-
-        const json = await resp.json().catch(() => ({}));
-        return NextResponse.json(json, { status: resp.status });
-      } catch (e) {
-        // Proxy başarısızsa internal akışa düş (fallback)
+        const proxyJson = await proxyResp.json().catch(() => ({}));
+        return NextResponse.json(proxyJson, { status: proxyResp.status });
+      } catch {
+        // public proxy hata verirse internal akışa düş (fallback)
       }
     }
 
-    // 2) INTERNAL AKIŞ: job’ı biz oluşturur, internal enqueue ederiz.
+    /**
+     * 2) INTERNAL AKIŞ: job’ı oluştur, internal enqueue et.
+     */
     const nowIso = new Date().toISOString();
     const jobId = uuidv4();
 
@@ -70,10 +86,12 @@ export async function POST(request: NextRequest) {
     try {
       const check = await getJobFromFirestore(jobId);
       wroteOk = !!check;
-    } catch {}
+    } catch {
+      // no-op
+    }
 
-    // Internal base URL belirle (ENV geçersizse same-origin)
-    let baseUrl = process.env.INTERNAL_API_URL;
+    // Internal base URL (ENV geçersizse same-origin)
+    let baseUrl = INTERNAL_API_URL_ENV;
     try {
       if (!baseUrl) throw new Error('no_base');
       const u = new URL(baseUrl);
@@ -83,7 +101,7 @@ export async function POST(request: NextRequest) {
       baseUrl = new URL(request.url).origin;
     }
 
-    const key = process.env.INTERNAL_API_TOKEN || '';
+    const key = INTERNAL_API_TOKEN_ENV;
     if (!key) {
       await updateJobInFirestore(jobId, {
         status: 'FAILED',
@@ -109,7 +127,7 @@ export async function POST(request: NextRequest) {
     const payload = `${ts}.${JSON.stringify(body)}`;
     const sig = crypto.createHmac('sha256', key).update(payload).digest('hex');
 
-    // Fire-and-forget; hata olursa job’ı FAILED’a çek
+    // Fire-and-forget; hata olursa FAILED’a çek
     fetch(enqueueUrl, {
       method: 'POST',
       headers: {
@@ -138,9 +156,12 @@ export async function POST(request: NextRequest) {
         });
       });
 
-    // 202 tercih ettim ama mevcut davranışı korumak istersen 200 bırakabilirsin
+    // 202: arka planda kuyruğa attık
     return NextResponse.json({ jobId, wroteOk }, { status: 202 });
   } catch (error) {
-    return NextResponse.json({ error: 'Beklenmeyen bir hata olustu.' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Beklenmeyen bir hata olustu.' },
+      { status: 500 }
+    );
   }
 }
