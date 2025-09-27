@@ -53,6 +53,10 @@ async function tryScrape(url: string): Promise<{
 }> {
   const target = normalizeUrl(url);
   const cloudRun = process.env.SCRAPER_URL?.trim();
+  const forceExternalScraper = ['1', 'true', 'yes', 'on'].includes(
+    String(process.env.FORCE_EXTERNAL_SCRAPER ?? '').toLowerCase()
+  );
+  let cloudRunError: unknown;
 
   // 1) Cloud Run Scraper
   if (cloudRun) {
@@ -89,15 +93,32 @@ async function tryScrape(url: string): Promise<{
         };
       }
 
-      // HTTP geldi ama içerik uygun değil
+      // HTTP geldi ama icerik uygun degil
       throw new Error(json?.error || `cloud-scraper-bad-response: ${resp.status} ${resp.statusText}`);
     } catch (e: any) {
-      logger.warn(
-        `[Orchestrator] Cloud Run scraper failed, falling back to Playwright`,
-        'orchestrateAnalysis',
-        { error: e?.message }
-      );
+      cloudRunError = e;
+      const warnMsg = forceExternalScraper
+        ? '[Orchestrator] Cloud Run scraper failed and FORCE_EXTERNAL_SCRAPER is set; skipping local fallback'
+        : '[Orchestrator] Cloud Run scraper failed, falling back to Playwright';
+      logger.warn(warnMsg, 'orchestrateAnalysis', { error: e?.message });
     }
+  } else if (forceExternalScraper) {
+    throw new AppError(
+      ErrorType.CONFIGURATION,
+      'FORCE_EXTERNAL_SCRAPER is true but SCRAPER_URL is not configured',
+      { contextData: { url: target } }
+    );
+  }
+
+  if (forceExternalScraper) {
+    throw new AppError(
+      ErrorType.SCRAPING_ERROR,
+      'Cloud Run scraper failed and local fallback is disabled via FORCE_EXTERNAL_SCRAPER.',
+      {
+        contextData: { url: target },
+        originalError: cloudRunError instanceof Error ? cloudRunError : undefined,
+      }
+    );
   }
 
   // 2) Lokal Playwright (fallback)
@@ -119,7 +140,6 @@ async function tryScrape(url: string): Promise<{
     via: 'playwright',
   };
 }
-
 /* --------------------------- main orchestrator --------------------------- */
 
 export async function orchestrateAnalysis(job: AnalysisJob): Promise<void> {
