@@ -197,7 +197,10 @@ export interface AnalysisJob {
   scrapeMeta?: {
     robotsTxt?: string;
     llmsTxt?: string;
-    performance?: PerformanceMetrics | null; // <- any yerine tipli
+    performance?: {
+      timeOrigin?: number;
+      timing?: Record<string, unknown>;
+      navigation?: Record<string, unknown>;
   };
   arkheReport?: ArkheReport;
   prometheusReport?: PrometheusReport;
