@@ -1,4 +1,5 @@
 // src/services/analysisOrchestrator.ts
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { scrapWithPlaywright } from '@/utils/playwrightScraper';
@@ -8,50 +9,52 @@ import { runPrometheusAnalysis } from '@/services/prometheus';
 import { runLirAnalysis } from '@/services/lir';
 import { runGenerativePerformanceAnalysis } from '@/services/generativePerformance';
 import { generateEnhancedAnalysisReport } from '@/utils/gemini';
-import { AnalysisJob, ScrapeMeta } from '@/types/geo';
+
+import {
+  AnalysisJob,
+  ScrapeMeta,
+  PerformanceMetrics,
+  PrometheusReport,
+} from '@/types/geo';
+
 import logger from '@/utils/logger';
 import { AppError, ErrorType } from '@/utils/errors';
 import { updateJobInFirestore } from '@/lib/firebase-admin';
 import { updateQueryStatus, saveReport, appendJobEvent } from '@/lib/database';
 
-/* ------------------------------------------------------------------ */
-/* Helpers                                                            */
-/* ------------------------------------------------------------------ */
+/* ------------------------------ helpers ------------------------------ */
 
-function normalizeUrl(input: string): string {
+function normalizeUrl(u: string): string {
   try {
-    const withProto = input.startsWith('http') ? input : `https://${input}`;
+    const withProto = u.startsWith('http') ? u : `https://${u}`;
     return new URL(withProto).toString();
   } catch {
-    return input;
+    return u;
   }
 }
 
-async function updateJob(
-  job: AnalysisJob,
-  updates: Partial<AnalysisJob>
-): Promise<AnalysisJob> {
+async function updateJob(job: AnalysisJob, updates: Partial<AnalysisJob>): Promise<AnalysisJob> {
   const updatesWithTimestamp = { ...updates, updatedAt: new Date().toISOString() };
   await updateJobInFirestore(job.id, updatesWithTimestamp);
   return { ...job, ...updatesWithTimestamp };
 }
 
 /**
- * Varsa Cloud Run Scraper’ı kullanır; hata veya başarısız yanıtta
- * lokal Playwright’a düşer. Başarılı sonuçta via = 'cloud-run' | 'playwright'.
+ * Cloud Run scraper varsa önce onu dener; hata olursa lokal Playwright’a düşer.
+ * Başarıda { html, content, robotsTxt, llmsTxt, performance, via } döner.
  */
 async function tryScrape(url: string): Promise<{
   html: string;
   content: string;
   robotsTxt?: string;
   llmsTxt?: string;
-  performance?: unknown;
+  performance?: PerformanceMetrics;
   via: 'cloud-run' | 'playwright';
 }> {
   const target = normalizeUrl(url);
   const cloudRun = process.env.SCRAPER_URL?.trim();
 
-  // 1) Cloud Run Scraper (varsa)
+  // 1) Cloud Run Scraper
   if (cloudRun) {
     try {
       const controller = new AbortController();
@@ -66,181 +69,156 @@ async function tryScrape(url: string): Promise<{
 
       clearTimeout(to);
 
-      const json = (await resp.json().catch(() => ({}))) as Record<string, unknown>;
-      const ok = Boolean(json?.ok);
+      const json: any = await resp.json().catch(() => ({}));
+      if (resp.ok && json?.ok) {
+        const perf: PerformanceMetrics | undefined = json?.performance
+          ? {
+              timeOrigin: json.performance.timeOrigin,
+              timing: json.performance.timing,
+              navigation: json.performance.navigation,
+            }
+          : undefined;
 
-      if (resp.ok && ok) {
-        const html = String((json as { html?: unknown }).html ?? '');
-        const content = String((json as { content?: unknown }).content ?? '');
-        const robotsTxt =
-          typeof (json as { robotsTxt?: unknown }).robotsTxt === 'string'
-            ? ((json as { robotsTxt?: string }).robotsTxt)
-            : undefined;
-        const llmsTxt =
-          typeof (json as { llmsTxt?: unknown }).llmsTxt === 'string'
-            ? ((json as { llmsTxt?: string }).llmsTxt)
-            : undefined;
-        const performance = (json as { performance?: unknown }).performance;
-
-        return { html, content, robotsTxt, llmsTxt, performance, via: 'cloud-run' };
+        return {
+          html: String(json.html ?? ''),
+          content: String(json.content ?? ''),
+          robotsTxt: typeof json.robotsTxt === 'string' ? json.robotsTxt : undefined,
+          llmsTxt: typeof json.llmsTxt === 'string' ? json.llmsTxt : undefined,
+          performance: perf,
+          via: 'cloud-run',
+        };
       }
 
-      // HTTP geldi ama beklenen gövde değil
-      const msg = (json as { error?: unknown }).error;
-      throw new Error(
-        typeof msg === 'string'
-          ? msg
-          : `cloud-scraper-bad-response: ${resp.status} ${resp.statusText}`
-      );
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'unknown';
+      // HTTP geldi ama içerik uygun değil
+      throw new Error(json?.error || `cloud-scraper-bad-response: ${resp.status} ${resp.statusText}`);
+    } catch (e: any) {
       logger.warn(
-        `[Orchestrator] Cloud Run scraper failed, fallback to Playwright`,
+        `[Orchestrator] Cloud Run scraper failed, falling back to Playwright`,
         'orchestrateAnalysis',
-        { error: message }
+        { error: e?.message }
       );
     }
   }
 
   // 2) Lokal Playwright (fallback)
   const r = await scrapWithPlaywright(target);
+  const perfFallback: PerformanceMetrics | undefined = r.performanceMetrics
+    ? {
+        timeOrigin: r.performanceMetrics.timeOrigin,
+        timing: r.performanceMetrics.timing,
+        navigation: r.performanceMetrics.navigation,
+      }
+    : undefined;
+
   return {
     html: r.html,
     content: r.content,
     robotsTxt: r.robotsTxt,
     llmsTxt: r.llmsTxt,
-    performance: r.performanceMetrics,
+    performance: perfFallback,
     via: 'playwright',
   };
 }
 
-/* ------------------------------------------------------------------ */
-/* Main Orchestrator                                                  */
-/* ------------------------------------------------------------------ */
+/* --------------------------- main orchestrator --------------------------- */
 
 export async function orchestrateAnalysis(job: AnalysisJob): Promise<void> {
   const { id, url } = job;
   logger.info(`[Orchestrator] Start: ${id} - ${url}`, 'orchestrateAnalysis');
 
   try {
-    /* 0) INIT -> PROCESSING */
+    // 0) INIT -> PROCESSING
     job = await updateJob(job, { status: 'PROCESSING' });
-    try {
-      await appendJobEvent(id, { step: 'INIT', status: 'COMPLETED' });
-    } catch {
-      /* noop */
-    }
+    try { await appendJobEvent(id, { step: 'INIT', status: 'COMPLETED' }); } catch {}
 
-    /* 1) SCRAPE */
+    // 1) SCRAPE
     job = await updateJob(job, { status: 'PROCESSING_SCRAPE' });
-    try {
-      await appendJobEvent(id, { step: 'SCRAPE', status: 'STARTED' });
-    } catch {
-      /* noop */
-    }
+    try { await appendJobEvent(id, { step: 'SCRAPE', status: 'STARTED' }); } catch {}
 
     try {
       const scrape = await tryScrape(url);
 
-      // Minimal garanti alanı (html + content)
-      const scrapeUpdates: Partial<AnalysisJob> = {
-        scrapedContent: scrape.content,
-        scrapedHtml: scrape.html,
-      };
-
-      // Opsiyonel meta
       const meta: ScrapeMeta = {
         robotsTxt: scrape.robotsTxt,
         llmsTxt: scrape.llmsTxt,
         performance: scrape.performance,
         via: scrape.via,
       };
-      // Typesafe alan: AnalysisJob içine scrapeMeta eklendiyse set et
-      (scrapeUpdates as { scrapeMeta?: ScrapeMeta }).scrapeMeta = meta;
 
-      job = await updateJob(job, scrapeUpdates);
+      job = await updateJob(job, {
+        scrapedContent: scrape.content,
+        scrapedHtml: scrape.html,
+        scrapeMeta: meta,
+      });
 
-      try {
-        await appendJobEvent(id, { step: 'SCRAPE', status: 'COMPLETED' });
-      } catch {
-        /* noop */
-      }
-    } catch (scrapeErr) {
+      try { await appendJobEvent(id, { step: 'SCRAPE', status: 'COMPLETED' }); } catch {}
+
+    } catch (scrapeErr: any) {
       const msg =
-        scrapeErr instanceof Error ? scrapeErr.message : 'scrape failed (unknown error)';
+        (scrapeErr?.message as string) ||
+        (typeof scrapeErr === 'string' ? scrapeErr : 'scrape failed');
 
-      await updateJob(job, { status: 'FAILED', error: `scrape_failed: ${msg}` });
+      // Firestore’da hem status’u hem hatayı netleştiriyoruz
+      await updateJob(job, {
+        status: 'FAILED',
+        error: `scrape_failed: ${msg}`,
+      });
+
       try {
         await appendJobEvent(id, {
           step: 'SCRAPE',
           status: 'FAILED',
           detail: { error: msg },
         });
-      } catch {
-        /* noop */
-      }
-      // SCRAPE kritik; akışı burada kesiyoruz
+      } catch {}
+
+      // Scrape yoksa devam etmenin anlamı yok; erken dön.
       return;
     }
 
-    /* 2) PSI */
+    // 2) PSI
     job = await updateJob(job, { status: 'PROCESSING_PSI' });
-    try {
-      await appendJobEvent(id, { step: 'PSI', status: 'STARTED' });
-    } catch {
-      /* noop */
-    }
+    try { await appendJobEvent(id, { step: 'PSI', status: 'STARTED' }); } catch {}
 
     const performanceResult = await runPerformanceAnalysis(url);
     job = await updateJob(job, { performanceReport: performanceResult });
-    try {
-      await appendJobEvent(id, { step: 'PSI', status: 'COMPLETED' });
-    } catch {
-      /* noop */
-    }
 
-    /* 3) ARKHE */
+    try { await appendJobEvent(id, { step: 'PSI', status: 'COMPLETED' }); } catch {}
+
+    // 3) ARKHE
     job = await updateJob(job, { status: 'PROCESSING_ARKHE' });
     const arkheAnalysisResult = await runArkheAnalysis(job);
-    if ((arkheAnalysisResult as { error?: unknown })?.error) {
+    if ((arkheAnalysisResult as any)?.error) {
       throw new AppError(
         ErrorType.ANALYSIS_FAILED,
-        `Arkhe analysis failed: ${(arkheAnalysisResult as { error?: unknown }).error as string}`
+        `Arkhe analysis failed: ${(arkheAnalysisResult as any).error}`
       );
     }
-    job = await updateJob(job, { arkheReport: arkheAnalysisResult as unknown });
+    job = await updateJob(job, { arkheReport: arkheAnalysisResult as any });
 
-    /* 4) PROMETHEUS */
+    // 4) PROMETHEUS
     job = await updateJob(job, { status: 'PROCESSING_PROMETHEUS' });
-    const prometheusReport = await runPrometheusAnalysis(job);
+    const prometheusReport: PrometheusReport = await runPrometheusAnalysis(job);
     job = await updateJob(job, { prometheusReport });
 
-    /* 5) LIR (Delfi) */
+    // 5) LIR (Delfi)
     job = await updateJob(job, { status: 'PROCESSING_LIR' });
     const delfiAgenda = await runLirAnalysis(prometheusReport);
     job = await updateJob(job, { delfiAgenda });
 
-    /* 6) Generative Performance */
+    // 6) Generative Performance
     job = await updateJob(job, { status: 'PROCESSING_GENERATIVE_PERFORMANCE' });
     const targetBrand =
       job.arkheReport?.businessModel?.brandName || new URL(job.url).hostname;
     const genPerf = await runGenerativePerformanceAnalysis(job, targetBrand);
     job = await updateJob(job, { generativePerformanceReport: genPerf });
-    try {
-      await appendJobEvent(id, { step: 'GEN_PERF', status: 'COMPLETED' });
-    } catch {
-      /* noop */
-    }
+    try { await appendJobEvent(id, { step: 'GEN_PERF', status: 'COMPLETED' }); } catch {}
 
-    /* 7) Narrative / Enhanced (opsiyonel) */
+    // 7) Narrative / Enhanced (opsiyonel)
     try {
-      try {
-        await appendJobEvent(id, { step: 'ENHANCED', status: 'STARTED' });
-      } catch {
-        /* noop */
-      }
+      try { await appendJobEvent(id, { step: 'ENHANCED', status: 'STARTED' }); } catch {}
 
-      const enhancedInput = {
+      const enhanced = await generateEnhancedAnalysisReport({
         domain: new URL(job.url).hostname,
         performanceReport: job.performanceReport,
         arkheReport: job.arkheReport,
@@ -248,24 +226,18 @@ export async function orchestrateAnalysis(job: AnalysisJob): Promise<void> {
         delfiAgenda: job.delfiAgenda,
         generativePerformanceReport: job.generativePerformanceReport,
         createdAt: job.createdAt,
-      };
+      });
 
-      const enhanced = await generateEnhancedAnalysisReport(enhancedInput);
       if (enhanced) {
-        // enhanced tipi dinamik olabilir; güvenli şekilde yay
-        job = await updateJob(job, { ...(enhanced as Record<string, unknown>) });
+        job = await updateJob(job, { ...(enhanced as any) });
       }
 
-      try {
-        await appendJobEvent(id, { step: 'ENHANCED', status: 'COMPLETED' });
-      } catch {
-        /* noop */
-      }
+      try { await appendJobEvent(id, { step: 'ENHANCED', status: 'COMPLETED' }); } catch {}
     } catch {
       logger.warn('Enhanced analysis failed; continuing', 'orchestrateAnalysis');
     }
 
-    /* 8) Complete */
+    // 8) Tamamla
     const finalGeoScore = prometheusReport.overallGeoScore;
     await updateJob(job, { status: 'COMPLETED', finalGeoScore });
 
@@ -275,8 +247,10 @@ export async function orchestrateAnalysis(job: AnalysisJob): Promise<void> {
     }
 
     logger.info(`[Orchestrator] Done: ${id}`, 'orchestrateAnalysis');
+
   } catch (error) {
     logger.error(`[Orchestrator] Error: ${id}`, 'orchestrateAnalysis', { error });
+
     await updateJob(job, {
       status: 'FAILED',
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -287,6 +261,7 @@ export async function orchestrateAnalysis(job: AnalysisJob): Promise<void> {
     }
 
     if (error instanceof AppError) throw error;
+
     throw new AppError(
       ErrorType.ANALYSIS_FAILED,
       `Analiz orkestrasyonu başarısız oldu: ${id}`,
