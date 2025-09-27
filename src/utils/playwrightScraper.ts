@@ -60,21 +60,8 @@ export async function scrapWithPlaywright(url: string): Promise<PlaywrightScrape
   const normalizedUrl =
     url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
 
-  const externalScraperBase = (process.env.SCRAPER_URL || '').trim();
-  const forceExternalScraper = ['1', 'true', 'yes', 'on'].includes(
-    String(process.env.FORCE_EXTERNAL_SCRAPER ?? '').toLowerCase()
-  );
-
-  if (forceExternalScraper && !externalScraperBase) {
-    throw new AppError(
-      ErrorType.CONFIGURATION,
-      'FORCE_EXTERNAL_SCRAPER is true but SCRAPER_URL is not set',
-      { contextData: { url: normalizedUrl } }
-    );
-  }
-
   // Önce dış scraper’ı dene (varsa)
-  if (externalScraperBase) {
+  if ((process.env.SCRAPER_URL || '').trim()) {
     let lastErr: any;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
@@ -94,25 +81,6 @@ export async function scrapWithPlaywright(url: string): Promise<PlaywrightScrape
         }
       }
     }
-    if (forceExternalScraper) {
-      logger.warn(
-        '[playwright-scraper] external scraper failed and FORCE_EXTERNAL_SCRAPER blocks local fallback',
-        'playwright-scraper',
-        {
-          url: normalizedUrl,
-          error: (lastErr && lastErr.message) || 'unknown',
-        }
-      );
-      throw new AppError(
-        ErrorType.SCRAPING_ERROR,
-        'External scraping failed and local fallback is disabled via FORCE_EXTERNAL_SCRAPER.',
-        {
-          contextData: { url: normalizedUrl },
-          originalError: lastErr instanceof Error ? lastErr : undefined,
-        }
-      );
-    }
-
     // Dış servis üst üste başarısızsa: local fallback
     logger.warn('[playwright-scraper] falling back to local Playwright', 'playwright-scraper', {
       url: normalizedUrl,
