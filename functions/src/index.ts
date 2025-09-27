@@ -1,51 +1,32 @@
 /**
- * Gen-2 HTTP Functions
+ * Import function triggers from their respective submodules:
+ *
+ * import {onCall} from "firebase-functions/v2/https";
+ * import {onDocumentWritten} from "firebase-functions/v2/firestore";
+ *
+ * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
-import { setGlobalOptions } from 'firebase-functions/v2';
-import { onRequest } from 'firebase-functions/v2/https';
-import * as logger from 'firebase-functions/logger';
 
-// Aynı anda kaç container açılsın (maliyet/tepe yük dengesi)
+import {setGlobalOptions} from "firebase-functions";
+import {onRequest} from "firebase-functions/https";
+import * as logger from "firebase-functions/logger";
+
+// Start writing functions
+// https://firebase.google.com/docs/functions/typescript
+
+// For cost control, you can set the maximum number of containers that can be
+// running at the same time. This helps mitigate the impact of unexpected
+// traffic spikes by instead downgrading performance. This limit is a
+// per-function limit. You can override the limit for each function using the
+// `maxInstances` option in the function's options, e.g.
+// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
+// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
+// functions should each use functions.runWith({ maxInstances: 10 }) instead.
+// In the v1 API, each function can only serve one request per container, so
+// this will be the maximum concurrent request count.
 setGlobalOptions({ maxInstances: 10 });
 
-/**
- * Healthcheck (opsiyonel)
- */
-export const ping = onRequest((_req, res) => {
-  res.status(200).json({ ok: true, service: 'analyzeDomainPublic' });
-});
-
-/**
- * analyzeDomainPublic
- * Body: { url: string, userId?: string }
- * İş: Orchestrator (Cloud Run) servisine iletir ve 202 döner.
- */
-export const analyzeDomainPublic = onRequest(async (req, res) => {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  try {
-    const { url, userId = 'public' } = req.body ?? {};
-    if (!url || typeof url !== 'string') {
-      return res.status(400).json({ error: 'url is required' });
-    }
-
-    // Cloud Run orchestrator URL (örn: https://orchestrateanalysis-....run.app)
-    const ORCHESTRATE_URL =
-      process.env.ORCHESTRATE_URL || 'https://orchestrateanalysis-e6jvnrn37q-uc.a.run.app';
-
-    const resp = await fetch(ORCHESTRATE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, userId }),
-    });
-
-    // Orchestrator non-200 dönerse yine de istemciye status/mesajı yansıt
-    const json = await resp.json().catch(() => ({}));
-    logger.info('forwarded to orchestrate', { status: resp.status, json });
-
-    // İstemciye 202 vermek iyi bir kullanıcı deneyimi (accepted/queue)
-    return res.status(202).json({ ok: true, via: 'analyzeDomainPublic', jobId: json?.jobId, orchestrate: 'forwarded' });
-  } catch (err: any) {
-    logger.error('analyzeDomainPublic error', { error: err?.message });
-    return res.status(500).json({ error: 'internal_error', detail: err?.message });
-  }
+export const helloWorld = onRequest((request, response) => {
+  logger.info("Hello logs!", { structuredData: true });
+  response.send("Hello from Firebase!");
 });
