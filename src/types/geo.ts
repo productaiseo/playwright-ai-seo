@@ -181,6 +181,11 @@ export interface AnalysisJob {
   finalGeoScore: number | null;
   scrapedContent?: string;
   scrapedHtml?: string;
+  scrapeMeta?: {
+    robotsTxt?: string;
+    llmsTxt?: string;
+    performance?: any; // dilersen türünü daraltırız
+  };
   arkheReport?: ArkheReport;
   prometheusReport?: PrometheusReport;
   delfiAgenda?: DelfiAgenda;
