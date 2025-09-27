@@ -1,5 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { BusinessModelAnalysis, CompetitorAnalysis, DelfiAgenda as DelfiAgendaAnalysis, TargetAudienceAnalysis, PerformanceAnalysis } from '@/types/analysis';
+// Window.performance'dan JSON'a düşürdüğümüz yapıya uygun, gevşek tipler
+export type PerformanceTimingDict = Record<string, number>;
+
+export interface PerformanceNavigationLike {
+  type?: number;          // PerformanceNavigation.type (deprecated benzeri)
+  redirectCount?: number; // redirect sayısı
+}
+
+export interface PerformanceMetrics {
+  timeOrigin?: number;
+  timing?: PerformanceTimingDict;
+  navigation?: PerformanceNavigationLike;
+}
 
 export type GeoPillar = "contentStructure" | "eeatSignals" | "technicalGEO" | "structuredData" | "brandAuthority" | "entityOptimization" | "contentStrategy";
 
@@ -184,7 +197,7 @@ export interface AnalysisJob {
   scrapeMeta?: {
     robotsTxt?: string;
     llmsTxt?: string;
-    performance?: any; // dilersen türünü daraltırız
+    performance?: PerformanceMetrics | null; // <- any yerine tipli
   };
   arkheReport?: ArkheReport;
   prometheusReport?: PrometheusReport;
