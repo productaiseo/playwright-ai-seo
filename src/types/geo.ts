@@ -1,45 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import {
-  BusinessModelAnalysis,
-  CompetitorAnalysis,
-  DelfiAgenda as DelfiAgendaAnalysis,
-  TargetAudienceAnalysis,
-  PerformanceAnalysis,
-} from '@/types/analysis';
+import { BusinessModelAnalysis, CompetitorAnalysis, DelfiAgenda as DelfiAgendaAnalysis, TargetAudienceAnalysis, PerformanceAnalysis } from '@/types/analysis';
 
-/** Window.performance’tan JSON’a düşürülen yapı için gevşek ama tipli alanlar */
-export type PerformanceTimingDict = Record<string, number>;
-
-export interface PerformanceNavigationLike {
-  /** PerformanceNavigation.type (deprecated benzeri) */
-  type?: number;
-  /** Redirect sayısı */
-  redirectCount?: number;
-}
-
-export interface PerformanceMetrics {
-  timeOrigin?: number;
-  timing?: PerformanceTimingDict;
-  navigation?: PerformanceNavigationLike;
-}
-
-/** Cloud Run veya lokal Playwright’tan gelen scrape meta verisi */
-export interface ScrapeMeta {
-  robotsTxt?: string;
-  llmsTxt?: string;
-  performance?: PerformanceMetrics;
-  /** Hangi kanal kullanıldı bilgisi (opsiyonel) */
-  via?: 'cloud-run' | 'playwright';
-}
-
-export type GeoPillar =
-  | 'contentStructure'
-  | 'eeatSignals'
-  | 'technicalGEO'
-  | 'structuredData'
-  | 'brandAuthority'
-  | 'entityOptimization'
-  | 'contentStrategy';
+export type GeoPillar = "contentStructure" | "eeatSignals" | "technicalGEO" | "structuredData" | "brandAuthority" | "entityOptimization" | "contentStrategy";
 
 export interface QueryPillarPerformance {
   [key: string]: {
@@ -66,10 +28,10 @@ export interface MetricScore {
   score: number; // 0-100
   justification: string;
   thoughtProcess?: string;
-  negativePoints?: string[]; // Puanı düşüren olumsuzluklar
-  positivePoints?: string[]; // Puanı artıran olumluluklar
+  negativePoints?: string[]; // Puanı düşüren spesifik olumsuzluklar
+  positivePoints?: string[]; // Puanı artıran spesifik olumluluklar
   evidence?: string[]; // Analizi destekleyen kanıtlar
-  details?: string; // Metriğin açıklaması ve öneriler
+  details?: string; // Metriğin açıklaması ve iyileştirme önerileri
 }
 
 export interface KnowledgeGraphPresence {
@@ -111,7 +73,7 @@ export interface ActionPlanItem {
 
 export interface MarketAnalysisData {
   pazarBuyuklugu: { value: number; unit: 'Milyon TL' | 'Milyar TL' };
-  yillikBuyumeOrani: number; // %
+  yillikBuyumeOrani: number; // Yüzde
   anahtarTrendler: string[];
   hedefKitleSegmentleri: Array<{ segment: string; buyukluk: number; davranislar: string[] }>;
 }
@@ -119,7 +81,7 @@ export interface MarketAnalysisData {
 export interface CompetitorPerformanceData {
   rakipAdi: string;
   geoSkoru: number;
-  pazarPayi: number; // %
+  pazarPayi: number; // Yüzde
   gucluYonler: string[];
   zayifYonler: string[];
 }
@@ -130,13 +92,13 @@ export interface PrometheusReport {
   overallGeoScore: number;
   geoScoreDetails: GeoScore;
   pillars: {
-    contentStructure: { score: number; weight: number; metrics: Record<string, MetricScore> };
-    eeatSignals: { score: number; weight: number; metrics: Record<string, MetricScore> };
-    technicalGEO: { score: number; weight: number; metrics: Record<string, MetricScore> };
-    structuredData: { score: number; weight: number; metrics: Record<string, MetricScore> };
-    brandAuthority: { score: number; weight: number; metrics: Record<string, MetricScore> };
-    entityOptimization: { score: number; weight: number; metrics: Record<string, MetricScore> };
-    contentStrategy: { score: number; weight: number; metrics: Record<string, MetricScore> };
+    contentStructure: { score: number; weight: number; metrics: Record<string, MetricScore>; };
+    eeatSignals: { score: number; weight: number; metrics: Record<string, MetricScore>; };
+    technicalGEO: { score: number; weight: number; metrics: Record<string, MetricScore>; };
+    structuredData: { score: number; weight: number; metrics: Record<string, MetricScore>; };
+    brandAuthority: { score: number; weight: number; metrics: Record<string, MetricScore>; };
+    entityOptimization: { score: number; weight: number; metrics: Record<string, MetricScore>; };
+    contentStrategy: { score: number; weight: number; metrics: Record<string, MetricScore>; };
     performance: { score: number; weight: number; metrics: Record<string, MetricScore> };
   };
   actionPlan: ActionPlanItem[];
@@ -173,7 +135,7 @@ export interface CitationMetrics {
 
 export interface SentimentMetrics {
   positive: number; // 0-100
-  neutral: number;  // 0-100
+  neutral: number; // 0-100
   negative: number; // 0-100
   sentimentTrend: 'positive' | 'neutral' | 'negative' | 'mixed';
 }
@@ -191,11 +153,11 @@ export interface HallucinationMetrics {
 export interface StrategicImpactForecast {
   geoOpportunityScore: number; // 0-100
   estimatedImpact: {
-    trafficIncrease: string; // örn: "+15-25%"
-    visibilityIncrease: string; // örn: "+20-30%"
-    conversionIncrease: string; // örn: "+5-10%"
+    trafficIncrease: string; // e.g., "+15-25%"
+    visibilityIncrease: string; // e.g., "+20-30%"
+    conversionIncrease: string; // e.g., "+5-10%"
   };
-  timeToImpact: string; // örn: "3-6 Ay"
+  timeToImpact: string; // e.g., "3-6 Ay"
   riskAssessment: {
     trafficLossRisk: string;
     reputationRisk: string;
@@ -210,42 +172,21 @@ export interface StrategicImpactForecast {
 
 export interface AnalysisJob {
   id: string;
-  /** Postgres sorgu ID (opsiyonel) */
-  queryId?: string;
+  queryId?: string; // Postgres'teki sorgu ID'si
   userId: string;
   url: string;
-  status:
-    | 'QUEUED'
-    | 'PROCESSING'
-    | 'PROCESSING_SCRAPE'
-    | 'PROCESSING_PSI'
-    | 'PROCESSING_ARKHE'
-    | 'PROCESSING_PROMETHEUS'
-    | 'PROCESSING_LIR'
-    | 'PROCESSING_GENERATIVE_PERFORMANCE'
-    | 'PROCESSING_STRATEGIC_IMPACT'
-    | 'COMPLETED'
-    | 'FAILED';
-  createdAt: string; // ISO 8601
-  updatedAt: string; // ISO 8601
+  status: 'QUEUED' | 'PROCESSING' | 'PROCESSING_SCRAPE' | 'PROCESSING_PSI' | 'PROCESSING_ARKHE' | 'PROCESSING_PROMETHEUS' | 'PROCESSING_LIR' | 'PROCESSING_GENERATIVE_PERFORMANCE' | 'PROCESSING_STRATEGIC_IMPACT' | 'COMPLETED' | 'FAILED';
+  createdAt: string; // ISO 8601 formatında tarih
+  updatedAt: string; // ISO 8601 formatında tarih
   finalGeoScore: number | null;
-
-  /** Scrape çıktıları */
   scrapedContent?: string;
   scrapedHtml?: string;
-  scrapeMeta?: ScrapeMeta;
-
-  /** Analiz raporları */
   arkheReport?: ArkheReport;
   prometheusReport?: PrometheusReport;
   delfiAgenda?: DelfiAgenda;
   generativePerformanceReport?: GenerativePerformanceReport;
   strategicImpactForecast?: StrategicImpactForecast;
   performanceReport?: PerformanceAnalysis;
-
-  /** Hata mesajı */
-  error?: string;
-
-  /** Opsiyonel üst sorgular */
+  error?: string; // Hata mesajları için
   topQueries?: { query: string; volume: number; position: number }[];
 }
