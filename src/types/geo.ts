@@ -201,7 +201,8 @@ export interface AnalysisJob {
       timeOrigin?: number;
       timing?: Record<string, unknown>;
       navigation?: Record<string, unknown>;
-  };
+    };
+   } 
   arkheReport?: ArkheReport;
   prometheusReport?: PrometheusReport;
   delfiAgenda?: DelfiAgenda;
